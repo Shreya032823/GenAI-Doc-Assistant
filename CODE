@@ -1,0 +1,81 @@
+import streamlit as st
+from PyPDF2 import PdfReader
+import openai
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains import RetrievalQA
+from langchain.llms import OpenAI
+
+# CONFIG
+openai.api_key = "YOUR_OPENAI_API_KEY"
+st.set_page_config(page_title="GenAI Doc Comprehension Assistant")
+st.title("GenAI Document Comprehension Assistant")
+
+# Upload File
+uploaded_file = st.file_uploader("Upload a PDF or TXT", type=['pdf', 'txt'])
+if uploaded_file:
+    if uploaded_file.name.endswith('.pdf'):
+        pdf_reader = PdfReader(uploaded_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+    else:
+        text = uploaded_file.read().decode('utf-8')
+
+    # Summarize
+    with st.spinner("Summarizing..."):
+        summary = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "Summarize the text in under 150 words."},
+                {"role": "user", "content": text}
+            ]
+        )["choices"][0]["message"]["content"]
+    st.subheader("📝 Auto Summary")
+    st.write(summary)
+
+    # Build Vector Store
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    chunks = text_splitter.split_text(text)
+    embeddings = OpenAIEmbeddings()
+    vector_store = FAISS.from_texts(chunks, embeddings)
+    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+    qa = RetrievalQA.from_chain_type(
+        llm=OpenAI(temperature=0),
+        chain_type="stuff",
+        retriever=retriever
+    )
+
+    # Interaction Mode
+    mode = st.radio("Choose Mode", ["Ask Anything", "Challenge Me"])
+    if mode == "Ask Anything":
+        question = st.text_input("Ask your question:")
+        if st.button("Get Answer") and question:
+            answer = qa.run(question)
+            st.write(f"**Answer:** {answer}")
+    elif mode == "Challenge Me":
+        if st.button("Generate Questions"):
+            prompt = f"""Based on this document, generate 3 logic/comprehension questions."""
+            response = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a tutor creating logical questions."},
+                    {"role": "user", "content": prompt + "\n\n" + text}
+                ]
+            )
+            questions = response["choices"][0]["message"]["content"].split("\n")
+            st.session_state['questions'] = questions
+        if 'questions' in st.session_state:
+            for idx, q in enumerate(st.session_state['questions']):
+                user_ans = st.text_input(f"Q{idx+1}: {q}", key=f"ans_{idx}")
+                if st.button(f"Evaluate Q{idx+1}"):
+                    eval_prompt = f"""Question: {q}\nUser Answer: {user_ans}\nDocument: {text}\nEvaluate if the answer is correct and justify with reference to the text."""
+                    feedback = openai.ChatCompletion.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": "You are an evaluator."},
+                            {"role": "user", "content": eval_prompt}
+                        ]
+                    )["choices"][0]["message"]["content"]
+                    st.write(feedback)
