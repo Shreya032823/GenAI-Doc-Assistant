@@ -11,10 +11,10 @@ A local AI-powered assistant that reads your research papers, legal files, or te
 * Clean local web interface (built with Streamlit)
 
 # Tech Tools
-•	Frontend: Streamlit
-•	Backend: Python, LangChain
-•	LLM: OpenAI GPT (via API)
-•	Vector Store: FAISS (for fast chunk retrieval)
+*	Frontend: Streamlit
+*	Backend: Python, LangChain
+*	LLM: OpenAI GPT (via API)
+*	Vector Store: FAISS (for fast chunk retrieval)
 
 # Setup & Run Locally
 * Clone this repo
