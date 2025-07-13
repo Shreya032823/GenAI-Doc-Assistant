@@ -23,5 +23,5 @@ A local AI-powered assistant that reads your research papers, legal files, or te
 * Run the app
 
 # How It Avoids Hallucination
-•	Uses Retrieval Augmented Generation (RAG): document is split into chunks → embedded → stored in a vector DB (FAISS) → relevant chunks are retrieved for every query.
-•	LLM answers only from the retrieved context — and every answer includes the supporting text or its location.
+*	Uses Retrieval Augmented Generation (RAG): document is split into chunks → embedded → stored in a vector DB (FAISS) → relevant chunks are retrieved for every query.
+*	LLM answers only from the retrieved context — and every answer includes the supporting text or its location.
